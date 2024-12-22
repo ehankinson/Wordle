@@ -54,7 +54,7 @@ class Wordle():
 
     def get_words(self) -> list[str]:
         words = []
-        with open("words.txt", "r") as f:
+        with open("all_wordle_accepted_words.txt", "r") as f:
             for word in f:
                 words.append(word.strip())
         
@@ -188,7 +188,7 @@ class Wordle():
 
     def make_probabilities(self) -> dict[str, float]:
         probs = {}
-        divider = 14855
+        divider = len(self.words)
 
         for word in self.words:
 
@@ -237,7 +237,7 @@ class Wordle():
 def simulate_wordle_game(wordle_instance, words):
     """Simulate a single round of Wordle."""
     wins = 0
-    for _ in range(125):  # Adjust to distribute workload
+    for _ in range(9375):  # Adjust to distribute workload
         word = random.choice(words)
         if wordle_instance.play_wordle(word):
             wins += 1
@@ -249,38 +249,38 @@ def simulate_wordle_game(wordle_instance, words):
 
 
 
-if __name__ == '__main__':
-    a = Wordle()
-    words = a.words
-
-    wins = 0
-    count = 0
-    for word in words:
-
-        for _ in range(10):
-            if a.play_wordle(word):
-                print("passed")
-                wins += 1
-            else:
-                print("failed")
-
-            a.reset()
-            count += 1
-
-    print(f"the total win% was {wins / countt}")
-
 # if __name__ == '__main__':
 #     a = Wordle()
 #     words = a.words
-#     num_processes = 8  # Number of processes (adjust based on your CPU cores)
 
-#     with ProcessPoolExecutor(max_workers=num_processes) as executor:
-#         # Divide the work among processes
-#         results = executor.map(simulate_wordle_game, [a] * num_processes, [words] * num_processes)
+#     wins = 0
+#     count = 0
+#     for word in words:
 
-#     # Collect results from all processes
-#     total_wins = sum(results)
-#     print(f"The total win% was {total_wins / 1_000}")
+#         for _ in range(10):
+#             if a.play_wordle(word):
+#                 print("passed")
+#                 wins += 1
+#             else:
+#                 print("failed")
+
+#             a.reset()
+#             count += 1
+
+#     print(f"the total win% was {wins / count}")
+
+if __name__ == '__main__':
+    a = Wordle()
+    words = a.words
+    num_processes = 16  # Number of processes (adjust based on your CPU cores)
+
+    with ProcessPoolExecutor(max_workers=num_processes) as executor:
+        # Divide the work among processes
+        results = executor.map(simulate_wordle_game, [a] * num_processes, [words] * num_processes)
+
+    # Collect results from all processes
+    total_wins = sum(results)
+    print(f"The total win% was {total_wins / 150_000}")
 
 
 
