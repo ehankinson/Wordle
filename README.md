@@ -49,7 +49,7 @@ To use the interactive tool to solve the Wordle from The New York Times:
 You can integrate the `Wordle` class into your own projects or scripts:
 
 ```python
-from wordle_solver import Wordle
+from wordle import Wordle
 
 wordle_solver = Wordle("easy")
 wordle_solver.ny_times_word_finder()
