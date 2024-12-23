@@ -52,8 +52,7 @@ You can integrate the `Wordle` class into your own projects or scripts:
 from wordle_solver import Wordle
 
 wordle_solver = Wordle("easy")
-best_guess = wordle_solver.ny_times_word_finder()
-print(best_guess)
+wordle_solver.ny_times_word_finder()
 ```
 
 ## Contributing
