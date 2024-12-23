@@ -1,22 +1,24 @@
-import math
+import os
 import random
 from concurrent.futures import ProcessPoolExecutor
 
 class Wordle():
     
-    def __init__(self) -> None:
-        self.words = self.get_words()
+    def __init__(self, words_list: str) -> None:
+        self.words = self.get_words(words_list)
         self.probabilities = self.make_probabilities()
         self.letters = self._get_letters()
         self.final_guess = ['', '', '', '', '']
+        self.in_word = set()
 
     
 
-    def reset(self):
-        self.words = self.get_words()
+    def reset(self, word_type: str):
+        self.words = self.get_words(word_type)
         self.probabilities = self.make_probabilities()
         self.letters = self._get_letters()
         self.final_guess = ['', '', '', '', '']
+        self.in_word = set()
 
 
 
@@ -52,9 +54,10 @@ class Wordle():
     
 
 
-    def get_words(self) -> list[str]:
+    def get_words(self, word_type: str) -> list[str]:
         words = []
-        with open("all_wordle_accepted_words.txt", "r") as f:
+        word_file = "all_wordle_accepted_words.txt" if word_type == 'easy' else "all_valid_words.txt"
+        with open(word_file, "r") as f:
             for word in f:
                 words.append(word.strip())
         
@@ -71,10 +74,7 @@ class Wordle():
             word_prob = 0
             for i, char in enumerate(word):
 
-                if char not in chars:
-                    chars[char] = 1
-                else:
-                    chars[char] += 1
+                chars[char] = chars.get(char, 0) + 1
 
                 word_prob += self.probabilities[char][i] / chars[char]
                 
@@ -110,8 +110,10 @@ class Wordle():
                 if i in f_letters[char]:
                     self.letters[char]['position'].add(i)
                     self.final_guess[i] = char
+                    self.in_word.add(char)
                 else:
                     self.letters[char]['not_position'].add(i)
+                    self.in_word.add(char)
                     is_word = False
             else:
                 self.letters[char]['in_word'] = False
@@ -141,9 +143,13 @@ class Wordle():
         new_words = []
         for word in self.words:
             
-            skip = False
+            if word == 'bluff':
+                a = 5
+
             chars = {}
+            skip = False
             for i, char in enumerate(word):
+                
                 if char not in chars:
                     chars[char] = 1
                 else:
@@ -167,8 +173,14 @@ class Wordle():
                         skip = True
                         break
             
+            if skip:
+                continue
+
+            if not self.in_word.issubset(chars.keys()):
+                continue
+
             for char in chars:
-                if chars[char] > 1:
+                if self.letters[char]['in_word'] and chars[char] > 1:
 
                     if chars[char] == 2 and not self.letters[char]['double']:
                         skip = True
@@ -181,8 +193,8 @@ class Wordle():
 
             if not skip:
                 new_words.append(word)
-        
-        self.words = new_words
+
+        self.words = new_words               
 
 
 
@@ -209,19 +221,22 @@ class Wordle():
                 
 
 
+    def grab_best_word(self, words: list) -> str:
+        guess_range = int(len(self.words) * 0.1)
+        index = random.randint(0, guess_range)
+        return words[index][0]
+    
+
+
     def play_wordle(self, own_word: str = None ) -> None:
         final_word = own_word if own_word is not None else self.get_random_word()
         guesses = []
         
-        did = False
-        for i in range(5):
+        for i in range(6):
             best_words = self.valid_word_prob()
-            # if len(best_words) > 5:
-                # best_word = random.choice(best_words[:5])[0]
-            # else:
-                # best_word = random.choice(best_words)[0]
-            best_word = best_words[0][0]
+            best_word = self.grab_best_word(best_words)
             guesses.append(best_word)
+            # best_word = guesses[i]
 
             if self.compare(final_word, guess=best_word):
                 # print(f"You gussed the word '{final_word}' in {i + 1} gusses")
@@ -234,53 +249,122 @@ class Wordle():
     
 
 
-def simulate_wordle_game(wordle_instance, words):
-    """Simulate a single round of Wordle."""
-    wins = 0
-    for _ in range(9375):  # Adjust to distribute workload
+    def ny_compare(self, guseed_word: str, feedback: list[str]) -> None:
+        index = 0
+        chars = {}
+        char_info = {}
+
+        for char, info in zip(guseed_word, feedback):
+            key = char if char not in char_info else f"{char}{chars[char]}"
+            char_info[key] = {'passed': None}
+
+            if info == 'b':
+                self.letters[char]['in_word'] = False
+                char_info[char] = {'passed': False}
+
+            elif info == 'g':
+                self.letters[char]['in_word'] = True
+                self.letters[char]['position'].add(index)
+                self.final_guess[index] = char
+                self.in_word.add(char)
+                char_info[key] = {'passed': True}
+            else:
+                self.letters[char]['in_word'] = True
+                self.letters[char]['not_position'].add(index)
+                char_info[key] = {'passed': True}
+                self.in_word.add(char)
+            
+            index += 1
+            chars[char] = chars.get(char, 0) + 1
+        
+        for char in chars:
+            if chars[char] == 1:
+                continue
+
+            keys = char_info.keys()
+            checks = [key for key in keys if char in key]
+
+            if chars[char] == 2:
+                for check in checks:
+                    if not char_info[check]['passed']:
+                        self.letters[char]['double'] = False
+                        self.letters[char]['triple'] = False
+                        break
+            
+            elif chars[char] == 3:
+                failed_count = 0
+                for check in checks:
+                    if not char_info[check]['passed']:
+                        failed_count += 1
+                
+                if failed_count == 1:
+                    self.letters[char]['triple'] = False
+                elif failed_count == 2:
+                    self.letters[char]['double'] = False
+                    self.letters[char]['triple'] = False
+
+
+
+    def ny_times_word_finder(self):
+        print("""
+Note when you input the best word into wordle, for the feed back:
+for GREEN: input g
+for YELLOW: input y
+for GREY: input b\n""")
+
+        for _ in range(6):
+            best_words = self.valid_word_prob()
+            best_word = self.grab_best_word(best_words)
+            print("Please input the word into wordle, then input the feedback afterwards")
+            print(f"Total Words are {len(self.words)}")
+            print(f"The best word to guess is:\n{best_word}")
+
+
+            inputs = input("Please input the results from New York Times: ")
+            print()  
+            valid_inputs = inputs.split()
+            self.ny_compare(best_word, valid_inputs)     
+            self.filter_words()
+            self.probabilities = self.make_probabilities()
+
+
+
+
+def simulate_wordle(word_type, words, run_count):
+    count = 0
+    a = Wordle(word_type)
+    
+    for _ in range(run_count):
         word = random.choice(words)
-        if wordle_instance.play_wordle(word):
-            wins += 1
-            print("won")
-        else:
-            print("lose")
-        wordle_instance.reset()
-    return wins
+        if a.play_wordle(word):
+            count += 1
+        a.reset(word_type)
+    
+    return count
 
 
 
-# if __name__ == '__main__':
-#     a = Wordle()
-#     words = a.words
-
-#     wins = 0
-#     count = 0
-#     for word in words:
-
-#         for _ in range(10):
-#             if a.play_wordle(word):
-#                 print("passed")
-#                 wins += 1
-#             else:
-#                 print("failed")
-
-#             a.reset()
-#             count += 1
-
-#     print(f"the total win% was {wins / count}")
-
-if __name__ == '__main__':
-    a = Wordle()
+if __name__ == "__main__":
+    word_type = "easy"
+    # wordle = Wordle(word_type)
+    # wordle.ny_times_word_finder()
+    
+    
+    a = Wordle(word_type)
     words = a.words
-    num_processes = 16  # Number of processes (adjust based on your CPU cores)
+    total_runs = 1_000_000
+    num_workers = os.cpu_count()  # Adjust based on your system's cores
+    runs_per_worker = total_runs // num_workers
 
-    with ProcessPoolExecutor(max_workers=num_processes) as executor:
-        # Divide the work among processes
-        results = executor.map(simulate_wordle_game, [a] * num_processes, [words] * num_processes)
+    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+        # Divide the work across workers
+        futures = [executor.submit(simulate_wordle, word_type, words, runs_per_worker) for _ in range(num_workers)]
+        
+        # Collect results from all workers
+        total_count = sum(f.result() for f in futures)
 
-    # Collect results from all processes
-    total_wins = sum(results)
-    print(f"The total win% was {total_wins / 150_000}")
+    print(f"Solve Percentage is {total_count / total_runs * 100:.2f}%")
+
 
 
 
