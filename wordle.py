@@ -1,4 +1,5 @@
 import os
+import time
 import random
 from concurrent.futures import ProcessPoolExecutor
 
@@ -349,10 +350,10 @@ if __name__ == "__main__":
     # wordle = Wordle(word_type)
     # wordle.ny_times_word_finder()
     
-    
+    start_time = time.time()
     a = Wordle(word_type)
     words = a.words
-    total_runs = 1_000_000
+    total_runs = 10_000
     num_workers = os.cpu_count()  # Adjust based on your system's cores
     runs_per_worker = total_runs // num_workers
 
@@ -363,8 +364,9 @@ if __name__ == "__main__":
         # Collect results from all workers
         total_count = sum(f.result() for f in futures)
 
+    end_time = time.time()
     print(f"Solve Percentage is {total_count / total_runs * 100:.2f}%")
-
+    print(f"Total time taken was {end_time - start_time} seconds")
 
 
 
