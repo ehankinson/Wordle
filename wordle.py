@@ -1,6 +1,9 @@
 import os
 import time
 import random
+import matplotlib.pyplot as plt
+
+from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
 
 class Wordle():
@@ -57,7 +60,7 @@ class Wordle():
 
     def get_words(self, word_type: str) -> list[str]:
         words = []
-        word_file = "all_wordle_accepted_words.txt" if word_type == 'easy' else "all_valid_words.txt"
+        word_file = "words/all_wordle_accepted_words.txt" if word_type == 'easy' else "words/all_valid_words.txt"
         with open(word_file, "r") as f:
             for word in f:
                 words.append(word.strip())
@@ -143,9 +146,6 @@ class Wordle():
     def filter_words(self) -> None:
         new_words = []
         for word in self.words:
-            
-            if word == 'bluff':
-                a = 5
 
             chars = {}
             skip = False
@@ -236,17 +236,16 @@ class Wordle():
         for i in range(6):
             best_words = self.valid_word_prob()
             best_word = self.grab_best_word(best_words)
+
             guesses.append(best_word)
-            # best_word = guesses[i]
 
             if self.compare(final_word, guess=best_word):
-                # print(f"You gussed the word '{final_word}' in {i + 1} gusses")
-                return True
+                return [True, i]
             
             self.filter_words()
             self.probabilities = self.make_probabilities()
         
-        return False
+        return [False, i]
     
 
 
@@ -306,67 +305,67 @@ class Wordle():
 
 
 
-    def ny_times_word_finder(self):
-        print("""
-Note when you input the best word into wordle, for the feed back:
-for GREEN: input g
-for YELLOW: input y
-for GREY: input b\n""")
-
-        for _ in range(6):
-            best_words = self.valid_word_prob()
-            best_word = self.grab_best_word(best_words)
-            print("Please input the word into wordle, then input the feedback afterwards")
-            print(f"Total Words are {len(self.words)}")
-            print(f"The best word to guess is:\n{best_word}")
-
-
-            inputs = input("Please input the results from New York Times: ")
-            print()  
-            valid_inputs = inputs.split()
-            self.ny_compare(best_word, valid_inputs)     
-            self.filter_words()
-            self.probabilities = self.make_probabilities()
-
-
-
-
 def simulate_wordle(word_type, words, run_count):
-    count = 0
+    results = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 'failed': 0}
     a = Wordle(word_type)
-    
     for _ in range(run_count):
         word = random.choice(words)
-        if a.play_wordle(word):
-            count += 1
+        result, index = a.play_wordle(word)
+        if result:
+            results[index] += 1
+        else:
+            results['failed'] += 1
+
         a.reset(word_type)
     
-    return count
+    return results
+
+
+
+def aggregate_results(partial_results):
+    total_results = Counter()
+    for result in partial_results:
+        total_results.update(result)
+    return total_results
+
+
+
+def plot_histogram(results, output_file='wordle_histogram.png'):
+    labels = list(map(str, results.keys()))
+    values = list(results.values())
+    
+    plt.bar(labels, values)
+    plt.xlabel('Attempts to Guess the Word / Failed')
+    plt.ylabel('Frequency')
+    plt.title('Wordle Results Distribution')
+    
+    plt.savefig(output_file)  # Save the plot to a file
+    plt.close()  # Close the plot to free resources
 
 
 
 if __name__ == "__main__":
     word_type = "easy"
-    # wordle = Wordle(word_type)
-    # wordle.ny_times_word_finder()
-    
-    start_time = time.time()
     a = Wordle(word_type)
+    # a.play_wordle('hosta')
     words = a.words
-    total_runs = 10_000
+    total_runs = 100_000
     num_workers = os.cpu_count()  # Adjust based on your system's cores
     runs_per_worker = total_runs // num_workers
 
+    results = []
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        # Divide the work across workers
         futures = [executor.submit(simulate_wordle, word_type, words, runs_per_worker) for _ in range(num_workers)]
-        
-        # Collect results from all workers
-        total_count = sum(f.result() for f in futures)
 
-    end_time = time.time()
-    print(f"Solve Percentage is {total_count / total_runs * 100:.2f}%")
-    print(f"Total time taken was {end_time - start_time} seconds")
+        # Gather results from the futures
+        for future in futures:
+            results.append(future.result())
+
+    # Aggregate the results
+    aggregated_results = aggregate_results(results)
+
+    # Plot the aggregated results
+    plot_histogram(aggregated_results, 'wordle_histogram.png')
 
 
 

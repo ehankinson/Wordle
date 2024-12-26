@@ -328,6 +328,7 @@ cameo
 canal
 candy
 canny
+canto
 canoe
 canon
 caper
@@ -701,6 +702,7 @@ faith
 false
 fancy
 fanny
+faqir
 farce
 fatal
 fatty
@@ -990,6 +992,7 @@ honey
 honor
 horde
 horny
+hosta
 horse
 hotel
 hotly
