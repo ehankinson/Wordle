@@ -22,14 +22,16 @@ print("If the wordle has been solved please write 'solved' after the 'Please inp
 
 
 stay = True
+
 while stay:
 
     done_left = False
     done_right = False
+    leave = False
   
     for _ in range(7):
-
-        if len(left_worlde.words) <= len(right_wordle.words) and not done_left:
+        
+        if len(left_worlde.words) <= len(right_wordle.words) or done_right:
             left_words = left_worlde.valid_word_prob()
             best_word = left_worlde.grab_best_word(left_words)
         else:
@@ -43,33 +45,45 @@ while stay:
         print(f"The best word to guess is:\n{best_word}")
 
 
-        inputs = input("Please input the results from New York Times: ")
-        print()  
+        for i in range(2):
+            turn = i % 2 == 0
+            text = "Please input the results for the left word:" if turn else "Please input the results for the right word:"
 
-        if "solved" == inputs:
-            break
+            if turn and done_left:
+                continue
 
-        valid_inputs = inputs.split()
-        if "solved" in inputs and len(inputs) != 1:
-            if valid_inputs[0] == "solved":
-                done_left = True
-                valid_inputs.pop(0)
+            if not turn and done_right:
+                continue
+
+            inputs = input(f"{text} ")
+            print()  
+
+            if done_left and done_right:
+                leave = True
+                break
+
+            if "solved" == inputs:
+                if turn:
+                    done_left = True
+                else:
+                    done_right = True
+
+            valid_inputs = inputs.split()
+            
+            if turn:
+                if not done_left:
+                    left_worlde.ny_compare(best_word, valid_inputs)     
+                    left_worlde.filter_words()
+                    left_worlde.probabilities = left_worlde.make_probabilities()
             else:
-                done_right = True
-                valid_inputs.pop(5)
-        
-        if not done_left:
-            left_words = valid_inputs[:5] if len(valid_inputs) > 5 else valid_inputs
-            left_worlde.ny_compare(best_word, left_words)     
-            left_worlde.filter_words()
-            left_worlde.probabilities = left_worlde.make_probabilities()
+                if not done_right:
+                    right_wordle.ny_compare(best_word, valid_inputs)     
+                    right_wordle.filter_words()
+                    right_wordle.probabilities = right_wordle.make_probabilities()
 
-        if not done_right:
-            right_words = valid_inputs[5:] if len(valid_inputs) > 5 else valid_inputs
-            right_wordle.ny_compare(best_word, valid_inputs[5:])     
-            right_wordle.filter_words()
-            right_wordle.probabilities = right_wordle.make_probabilities()
-    
+        if leave:
+            break
+        
     print("If you would like to continue input continue, otherwise input exit")
     play_again = input()
     if play_again == 'continue':

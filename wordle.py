@@ -347,12 +347,12 @@ def plot_histogram(results, output_file='wordle_histogram.png'):
 if __name__ == "__main__":
     word_type = "easy"
     a = Wordle(word_type)
-    # a.play_wordle('hosta')
     words = a.words
     total_runs = 100_000
     num_workers = os.cpu_count()  # Adjust based on your system's cores
     runs_per_worker = total_runs // num_workers
 
+    start_time = time.time()
     results = []
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
         futures = [executor.submit(simulate_wordle, word_type, words, runs_per_worker) for _ in range(num_workers)]
@@ -360,6 +360,9 @@ if __name__ == "__main__":
         # Gather results from the futures
         for future in futures:
             results.append(future.result())
+    
+    end_time = time.time()
+    print(f"The total time taken was {end_time - start_time} seconds")
 
     # Aggregate the results
     aggregated_results = aggregate_results(results)
