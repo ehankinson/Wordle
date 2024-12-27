@@ -15,7 +15,9 @@ for YELLOW: input y
 for GREY: input b\n
           
 An example would be:
-Please input the results from New York Times: b b g g Y g y b g g
+Please input the results for the left word: g b b y g
+      
+Please input the results for the right word: b b y g b  
 """)
 
 print("If the wordle has been solved please write 'solved' after the 'Please input the results from New York Times:' ")
