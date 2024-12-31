@@ -33,13 +33,17 @@ while stay:
   
     for _ in range(7):
         
-        if len(left_worlde.words) <= len(right_wordle.words) or done_right:
-            left_words = left_worlde.valid_word_prob()
-            best_word = left_worlde.grab_best_word(left_words)
+        less_left = len(left_worlde.words) <= len(right_wordle.words)
+
+        if done_left:
+            chosen_wordle = right_wordle
+        elif not done_right and not less_left:
+            chosen_wordle = right_wordle
         else:
-            right_words = right_wordle.valid_word_prob()
-            best_word = right_wordle.grab_best_word(right_words)
-                    
+            chosen_wordle = left_worlde
+        
+        best_words = chosen_wordle.valid_word_prob()
+        best_word = chosen_wordle.grab_best_word(best_words)
 
 
         print("Please input the word into wordle, then input the feedback afterwards")
