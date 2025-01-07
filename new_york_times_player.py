@@ -27,8 +27,6 @@ Please input the results from New York Times: b b g g Y
     
     print("If the wordle has been solved please write 'solved' after the 'Please input the results from New York Times:' ")
 
-    
-
     stay = True
     while stay:
 
@@ -43,6 +41,9 @@ Please input the results from New York Times: b b g g Y
             inputs = input("Please input the results from New York Times: ")
             print()  
 
+            if inputs == 'skip':
+                inputs = wordle.skip(best_words, best_word)
+                    
             if inputs == 'solved':
                 break
 

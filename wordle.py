@@ -1,4 +1,5 @@
 import os
+import copy
 import time
 import random
 import matplotlib.pyplot as plt
@@ -8,8 +9,8 @@ from concurrent.futures import ProcessPoolExecutor
 
 class Wordle():
     
-    def __init__(self, words_list: str) -> None:
-        self.words = self.get_words(words_list)
+    def __init__(self) -> None:
+        self.words = self.get_words()
         self.probabilities = self.make_probabilities()
         self.letters = self._get_letters()
         self.final_guess = ['', '', '', '', '']
@@ -58,10 +59,10 @@ class Wordle():
     
 
 
-    def get_words(self, word_type: str) -> list[str]:
+    def get_words(self) -> list[str]:
         words = []
-        word_file = "words/all_wordle_accepted_words.txt" if word_type == 'easy' else "words/all_valid_words.txt"
-        with open(word_file, "r") as f:
+        with open("words/all_valid_words.txt", "r") as f:
+        # with open("words/all_wordle_accepted_words.txt", "r") as f:
             for word in f:
                 words.append(word.strip())
         
@@ -93,15 +94,8 @@ class Wordle():
     
 
 
-    def compare(self, final_word: str, guess: str) -> bool:
-        f_letters = {}
-        for i, char in enumerate(final_word):
-            if char not in f_letters:
-                f_letters[char] = [i]
-            else:
-                f_letters[char].append(i)
-        
-        is_word = True
+    def compare(self, f_letters: dict, guess: str) -> list[str]:
+        letters = []
         g_letters = {}
         for i, char in enumerate(guess):
             if char not in g_letters:
@@ -115,13 +109,14 @@ class Wordle():
                     self.letters[char]['position'].add(i)
                     self.final_guess[i] = char
                     self.in_word.add(char)
+                    letters.append('g')
                 else:
                     self.letters[char]['not_position'].add(i)
                     self.in_word.add(char)
-                    is_word = False
+                    letters.append('y')
             else:
                 self.letters[char]['in_word'] = False
-                is_word = False
+                letters.append('b')
         
         for char in g_letters:
             if char in f_letters:
@@ -139,7 +134,19 @@ class Wordle():
                         
                 # we dont need to check 3 f_length since 2 will do all the proper checks
                     
-        return is_word
+        return letters
+
+
+
+    def final_guess_letters(self, final_word: str) -> dict[str]:
+        f_letters = {}
+        for i, char in enumerate(final_word):
+            if char not in f_letters:
+                f_letters[char] = [i]
+            else:
+                f_letters[char].append(i)
+        
+        return f_letters
 
 
 
@@ -305,19 +312,84 @@ class Wordle():
 
 
 
-def simulate_wordle(word_type, words, run_count):
-    results = {0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 'failed': 0}
-    a = Wordle(word_type)
+    def skip(self, best_words: list[str], word_picked: str, index: int):
+        while True:
+            index = None
+            for i, word in enumerate(best_words):
+                if word[0] == word_picked:
+                    index = i
+                    break
+                
+            best_words.pop(index)
+            word_picked = self.grab_best_word(best_words)
+            print(f"The best word to guess is:\n{word_picked}")
+            inputs = input(f"Please input the results for the {index + 1} word: ")
+            print()
+            
+            if inputs != 'skip':
+                return inputs, word_picked
+
+
+
+
+def simulate_wordle(number_of_wordles: int, run_count: int):
+    results = {}
+    for index in range(number_of_wordles + 5):
+        results[index + 1] = 0 
+    results['failed'] = 0
+        
     for _ in range(run_count):
-        word = random.choice(words)
-        result, index = a.play_wordle(word)
-        if result:
-            results[index] += 1
+    
+        wordles = {}
+        for index in range(number_of_wordles):
+            wordle = Wordle()
+            final_word = wordle.get_random_word()
+            f_letters = wordle.final_guess_letters(final_word)
+            wordles[index] = {'wordle': wordle, 'done': False, 'f_letters': f_letters}
+        
+        completed = 0
+    
+        for time in range(number_of_wordles + 5):
+            
+            less_amount = float('inf')
+            chosen_wordle = None
+            for wordle in wordles:
+                
+                if wordles[wordle]["done"]:
+                    continue
+
+                words_amount = len(wordles[wordle]["wordle"].words)
+
+                if words_amount < less_amount and not wordles[wordle]["done"]:
+                    less_amount = words_amount
+                    chosen_wordle = wordles[wordle]["wordle"]
+                
+            best_words = chosen_wordle.valid_word_prob()
+            best_word = chosen_wordle.grab_best_word(best_words)
+
+            for wordle in wordles:
+
+                if wordles[wordle]["done"]:
+                    continue
+
+                inputs = wordles[wordle]["wordle"].compare(wordles[wordle]["f_letters"], best_word)
+                inputs_set = set(inputs)
+                if len(inputs_set) == 1 and 'g' in inputs_set:
+                    wordles[wordle]["done"] = True
+                    completed += 1
+                    continue
+
+                wordles[wordle]["wordle"].filter_words()
+                wordles[wordle]["wordle"].probabilites = wordles[wordle]["wordle"].make_probabilities()
+
+            if completed == number_of_wordles:
+                break
+            
+        if completed == number_of_wordles:
+            results[time + 1] += 1
         else:
             results['failed'] += 1
 
-        a.reset(word_type)
-    
     return results
 
 
@@ -345,31 +417,33 @@ def plot_histogram(results, output_file='wordle_histogram.png'):
 
 
 if __name__ == "__main__":
-    word_type = "easy"
-    a = Wordle(word_type)
-    words = a.words
-    total_runs = 100_000
-    num_workers = os.cpu_count()  # Adjust based on your system's cores
+    number_of_wordles = 16
+    total_runs = 1_000
+    num_workers = os.cpu_count()
     runs_per_worker = total_runs // num_workers
+
+    # results = simulate_wordle(number_of_wordles, runs_per_worker)
 
     start_time = time.time()
     results = []
     with ProcessPoolExecutor(max_workers=num_workers) as executor:
-        futures = [executor.submit(simulate_wordle, word_type, words, runs_per_worker) for _ in range(num_workers)]
-
-        # Gather results from the futures
+        futures = [executor.submit(simulate_wordle, number_of_wordles, runs_per_worker) for _ in range(num_workers)]
+    
         for future in futures:
             results.append(future.result())
     
     end_time = time.time()
     print(f"The total time taken was {end_time - start_time} seconds")
 
-    # Aggregate the results
     aggregated_results = aggregate_results(results)
 
-    # Plot the aggregated results
-    plot_histogram(aggregated_results, 'wordle_histogram.png')
+    wins = 0
+    for key, val in aggregated_results.items():
+        if key == 'failed':
+            continue
 
+        wins += val
 
+    print(f"The WIN% is {(wins / total_runs) * 100 :.2f}")
 
- 
+    plot_histogram(aggregated_results, f"wordle_histogram_{number_of_wordles}.png")
