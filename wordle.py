@@ -3,8 +3,8 @@ import copy
 import time
 import random
 import matplotlib.pyplot as plt
-
-from collections import Counter
+import math
+from collections import Counter, defaultdict
 from concurrent.futures import ProcessPoolExecutor
 
 class Wordle():
@@ -15,6 +15,7 @@ class Wordle():
         self.letters = self._get_letters()
         self.final_guess = ['', '', '', '', '']
         self.in_word = set()
+        self.word_score_cache = {}
 
     
 
@@ -71,21 +72,13 @@ class Wordle():
 
 
     def valid_word_prob(self) -> list[list[str, float]]:
-        word_probabilities = []
-
+        """Get sorted list of words with their scores"""
+        word_scores = []
         for word in self.words:
-            
-            chars = {}
-            word_prob = 0
-            for i, char in enumerate(word):
-
-                chars[char] = chars.get(char, 0) + 1
-
-                word_prob += self.probabilities[char][i] / chars[char]
-                
-            word_probabilities.append([word, word_prob])
-
-        return sorted(word_probabilities, key=lambda item: item[1], reverse=True)
+            score = self.calculate_word_score(word)
+            word_scores.append([word, score])
+        
+        return sorted(word_scores, key=lambda x: x[1], reverse=True)
 
 
 
@@ -329,6 +322,99 @@ class Wordle():
             if inputs != 'skip':
                 return inputs, word_picked
 
+
+
+    def calculate_word_score(self, word: str) -> float:
+        """Calculate a word's score based on multiple factors:
+        1. Letter frequency in possible words
+        2. Position-specific letter probability
+        3. Information gain potential
+        4. Pattern uniqueness
+        """
+        if word in self.word_score_cache:
+            return self.word_score_cache[word]
+
+        # Basic letter probability score
+        letter_score = self._calculate_letter_score(word)
+        
+        # Pattern diversity score (how well it splits remaining possibilities)
+        pattern_score = self._calculate_pattern_score(word)
+        
+        # Position score (value of letters in specific positions)
+        position_score = self._calculate_position_score(word)
+        
+        # Combine scores with weights
+        total_score = (
+            0.4 * letter_score +
+            0.4 * pattern_score +
+            0.2 * position_score
+        )
+        
+        self.word_score_cache[word] = total_score
+        return total_score
+
+    def _calculate_letter_score(self, word: str) -> float:
+        """Calculate score based on letter frequencies"""
+        chars = Counter(word)
+        score = 0
+        for char, count in chars.items():
+            if self.letters[char]['in_word'] is None:  # Unknown letter
+                score += sum(self.probabilities[char].values()) / count
+        return score
+
+    def _calculate_pattern_score(self, word: str) -> float:
+        """Calculate how well this word would split the remaining possibilities"""
+        if len(self.words) <= 1:
+            return 0
+        
+        pattern_counts = defaultdict(int)
+        total_patterns = 0
+        
+        # Sample a subset of remaining words for performance
+        sample_size = min(100, len(self.words))
+        sample_words = random.sample(self.words, sample_size)
+        
+        for possible_word in sample_words:
+            pattern = self._get_feedback_pattern(word, possible_word)
+            pattern_counts[pattern] += 1
+            total_patterns += 1
+        
+        # Calculate entropy (information gain)
+        entropy = 0
+        for count in pattern_counts.values():
+            prob = count / total_patterns
+            entropy -= prob * math.log2(prob)
+        
+        return entropy
+
+    def _calculate_position_score(self, word: str) -> float:
+        """Calculate score based on position-specific letter probabilities"""
+        score = 0
+        for i, char in enumerate(word):
+            if i in self.letters[char]['position']:
+                score += 1
+            elif i in self.letters[char]['not_position']:
+                score -= 0.5
+        return score
+
+    def _get_feedback_pattern(self, guess: str, answer: str) -> str:
+        """Generate a pattern string for how guess matches answer"""
+        pattern = ['b'] * 5
+        answer_chars = Counter(answer)
+        
+        # First pass: mark correct positions
+        for i, (g, a) in enumerate(zip(guess, answer)):
+            if g == a:
+                pattern[i] = 'g'
+                answer_chars[g] -= 1
+        
+        # Second pass: mark yellow positions
+        for i, (g, a) in enumerate(zip(guess, answer)):
+            if pattern[i] == 'b' and g in answer_chars and answer_chars[g] > 0:
+                pattern[i] = 'y'
+                answer_chars[g] -= 1
+            
+        return ''.join(pattern)
 
 
 
