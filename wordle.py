@@ -61,8 +61,8 @@ class Wordle():
 
     def get_words(self) -> list[str]:
         words = []
-        with open("words/all_valid_words.txt", "r") as f:
-        # with open("words/all_wordle_accepted_words.txt", "r") as f:
+        # with open("words/all_valid_words.txt", "r") as f:
+        with open("words/all_wordle_accepted_words.txt", "r") as f:
             for word in f:
                 words.append(word.strip())
         
@@ -230,9 +230,9 @@ class Wordle():
 
 
     def grab_best_word(self, words: list) -> str:
-        guess_range = int(len(self.words) * 0.1)
-        index = random.randint(0, guess_range)
-        return words[index][0]
+        # guess_range = int(len(self.words) * 0.1)
+        # index = random.randint(0, guess_range)
+        return words[0][0]
     
 
 
