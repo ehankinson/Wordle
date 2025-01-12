@@ -1,44 +1,73 @@
-# Wordle Solver
+# Wordle Project
 
-## Description
-This project is a Python-based Wordle solver that helps users find the best guesses for the popular word puzzle game, Wordle. It includes functionality for both single and dual Wordle games (Dordle) and provides feedback-based word filtering to optimize guesses.
+This project contains a playable Wordle game implementation and a versatile Wordle solver that can handle multiple simultaneous puzzles.
 
-## Installation
+## Part 1: Wordle Game
 
-1. **Clone the Repository:**
-   ```bash
-   git clone https://github.com/yourusername/wordle-solver.git
-   cd wordle-solver
-   ```
+### Prerequisites
+- Python 3.x
+- Pygame (for GUI version)
 
-2. **Install Dependencies:**
-   Ensure you have Python installed. Then, install the required packages:
-   ```bash
-   pip install matplotlib
-   ```
-
-3. **Prepare Word Lists:**
-   Ensure the word lists (`all_valid_words.txt` and `all_wordle_accepted_words.txt`) are in the `words` directory.
-
-## Usage
-
-### Single Wordle Game
-Run the `new_york_times_player.py` script to start a single Wordle game:
+### Installation
+1. Install required packages:
 ```bash
-python new_york_times_player.py
+pip install pygame
 ```
-Follow the prompts to input feedback for each guess.
 
-### Dordle Game
-Run the `dordle.py` script to start a dual Wordle game:
-```bash
-python dordle.py
-```
-Follow the prompts to input feedback for each guess on both Wordle boards.
+### How to Play
 
-### Simulate Wordle Games
-To simulate multiple Wordle games and generate a histogram of results, run:
+#### GUI Version (wordle_game.py)
+Run the graphical version with:
 ```bash
-python wordle.py
+python wordle_game.py
 ```
-This will create a `wordle_histogram.png` file showing the distribution of attempts.
+
+Features:
+- Interactive graphical interface
+- Color-coded feedback (green, yellow, gray)
+- On-screen keyboard
+- Win/lose screens with confetti celebration
+- Option to continue or quit after each game
+
+Controls:
+- Type letters to make your guess
+- ENTER: Submit guess
+- BACKSPACE: Delete letter
+- SPACE/ENTER: Skip celebration animation
+- Mouse: Click buttons in popup menus
+
+## Part 2: Wordle Solver
+
+### Description
+A versatile Python-based Wordle solver that can handle multiple simultaneous Wordle puzzles. Whether you're playing regular Wordle, Dordle (2 words), Quordle (4 words), or any other variant, this solver can help you find optimal guesses.
+
+### Usage
+
+Run the solver with:
+```bash
+python wordle_solver.py
+```
+
+Features:
+- Solve any number of simultaneous Wordle puzzles
+- Works with variants like:
+  - Wordle (1 word)
+  - Dordle (2 words)
+  - Quordle (4 words)
+  - And any other multiple-word variants
+- Provides optimal guessing strategies
+- Feedback-based word filtering
+
+How to Use:
+1. Run the script
+2. Enter the number of words you want to solve
+3. Input feedback for each guess using:
+   - 'g' for green (correct letter, correct position)
+   - 'y' for yellow (correct letter, wrong position)
+   - 'b' for black/gray (letter not in word)
+4. Receive suggested guesses for solving all puzzles simultaneously
+
+## Files
+- `wordle_game.py`: GUI implementation of the Wordle game
+- `wordle_solver.py`: Multi-puzzle Wordle solver
+- `wordle.py`: Core Wordle logic and functionality
